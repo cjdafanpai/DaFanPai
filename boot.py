@@ -4,7 +4,15 @@ import gc
 import time
 from smartcar import *
 from seekfree import *
-##
+
+# 开发板上的 C19 是拨码开关
+end_switch = Pin('C19', Pin.IN, pull=Pin.PULL_UP_47K, value = True)
+
+# # # # # # # # # # # # # # # 无线串口 # # # # # # # # # # # # # # #
+wireless = WIRELESS_UART(460800)
+# # # # # # # # # # # # # # # 无线串口 # # # # # # # # # # # # # # #
+
+
 # # # # # # # # # # # # # # # 按键# # # # # # # # # # # # # # # 
 key = KEY_HANDLER(10)
 key_a = 0
@@ -54,26 +62,40 @@ ccd_data2 = ccd.get(1)
 
 # # # # # # # # # # # # # # # 定时中断
 # 定义一个回调函数
-def time_pit_handler(time):
-    global ticker_flag
-    global ticker_count
-    ticker_flag = True
-    ticker_count = (ticker_count + 1) if (ticker_count < 100) else (1)
+def time_pit_handler1(time):
+    global ticker_flag1
+    global ticker_count1
+    ticker_flag1 = True
+    ticker_count1 = (ticker_count1 + 1) if (ticker_count1 < 100) else (1)
+    
+def time_pit_handler2(time):
+    global ticker_flag2
+    global ticker_count2
+    ticker_flag2 = True
+    ticker_count2 = (ticker_count2 + 1) if (ticker_count2 < 100) else (1)
+    
+def time_pit_handler3(time):
+    global ticker_flag3
+    global ticker_count3
+    ticker_flag3 = True
+    ticker_count3 = (ticker_count3 + 1) if (ticker_count3 < 100) else (1)
+    
+
 
 pit1 = ticker(1)
 pit1.capture_list(ccd)
-pit1.callback(time_pit_handler)
+pit1.callback(time_pit_handler1)
 pit1.start(5)
 
 pit2 = ticker(2)
 pit2.capture_list(encoder_l, encoder_r)
-pit2.callback(time_pit_handler)
+pit2.callback(time_pit_handler2)
 pit2.start(2)
 
 
 pit3 = ticker(0)
 pit3.capture_list(key)
-pit3.callback(time_pit_handler)
+pit3.callback(time_pit_handler3)
 pit3.start(10)
 # # # # # # # # # # # # # # # 定时中断
 
@@ -81,26 +103,35 @@ pit3.start(10)
 # 需要注意的是 ticker 是底层驱动的 这导致 Thonny 的 Stop 命令在这个固件版本中无法停止它
 # 因此一旦运行了使用了 ticker 模块的程序 要么通过复位核心板重新连接 Thonny
 # 或者像本示例一样 使用一个 IO 控制停止 Ticker 后再使用 Stop/Restart backend 按钮
-ticker_flag = False
-ticker_count = 0
-runtime_count = 0
+ticker_flag1 = False
+ticker_count1 = 0
+runtime_count1 = 0
+ticker_flag2 = False
+ticker_count2 = 0
+runtime_count2 = 0
+ticker_flag3 = False
+ticker_count3 = 0
+runtime_count3 = 0
+
 
 while True:
-    if (ticker_flag ):
-        
+    if (ticker_flag1):
+        ccd_data1 = ccd.get(0)
+        ccd_data2 = ccd.get(1)
+        wireless.send_ccd_image(WIRELESS_UART.CCD1_BUFFER_INDEX)
+        #wireless.send_ccd_image(WIRELESS_UART.CCD2_BUFFER_INDEX)
+    # # # # # # # # # # # # # V
+    if (ticker_flag2):
         if motor_dir == 1 and motor_duty > 0:
             motor_duty = motor_duty
         if motor_dir == 0 and motor_duty > 0:
             motor_duty = -motor_duty
         motor_l.duty(motor_duty)
         motor_r.duty(motor_duty)
-        
-        ccd_data1 = ccd.get(0)
-        ccd_data2 = ccd.get(1)
-        
         encl_data = encoder_l.get()
         encr_data = encoder_r.get()
-        
+    # # # # # # # # # # # # # V
+    if (ticker_flag3):
         key_data = key.get()
         # 按键数据为三个状态 0-无动作 1-短按 2-长按
         if key_data[0]:
@@ -117,6 +148,7 @@ while True:
             key.clear(4)
         
         ticker_flag = False
+    # # # # # # # # # # # # # V
     
     lcd.str16(0,130,"encoder_l={:>3d}.".format(encl_data),0xFFFF)
     lcd.str16(0,146,"encoder_r={:>3d}.".format(encr_data),0xFFFF)
@@ -124,3 +156,19 @@ while True:
     lcd.wave(0,  0, 128, 64, ccd_data1)
     lcd.wave(0, 64, 128, 64, ccd_data2)
     gc.collect()
+    if end_switch.value() == 0:
+        pit1.stop()
+        pit2.stop()
+        pit3.stop()
+        lcd.clear()
+        break
+
+
+
+
+
+
+
+
+
+ 
