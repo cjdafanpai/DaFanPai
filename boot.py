@@ -4,7 +4,7 @@ import gc
 import time
 from smartcar import *
 from seekfree import *
-
+##
 # # # # # # # # # # # # # # # 按键# # # # # # # # # # # # # # # 
 key = KEY_HANDLER(10)
 key_a = 0
